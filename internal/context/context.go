@@ -11,53 +11,80 @@ import (
 	"compiler/internal/analysis/semantics/table"
 )
 
-// Full compiler context.
-// Stores the state of the compiler, including configuration, modules, and dependencies.
-// All data is shared across the compiler's various phases like parsing, type checking, and code generation.
-
+// Development-time standard library directory.
 const STD_LIB_DEV = "ferret_libs_dev"
 
+// Where a module was loaded from.
 type ModuleOrigin string
 
 const (
-	ModuleOriginLocal      ModuleOrigin = "local"
-	ModuleOriginStdlib     ModuleOrigin = "stdlib"
+	// Project source file.
+	ModuleOriginLocal ModuleOrigin = "local"
+	// Standard library source file.
+	ModuleOriginStdlib ModuleOrigin = "stdlib"
+	// Package dependency source file.
 	ModuleOriginDependency ModuleOrigin = "dependency"
 )
 
+// Canonical file-backed import after resolver lookup.
 type ResolvedImport struct {
-	Key             string
-	ImportPath      string
-	FilePath        string
-	Origin          ModuleOrigin
+	// Stable graph identity.
+	Key string
+	// Module path as written in source.
+	ImportPath string
+	// Absolute source path.
+	FilePath string
+	// Local, stdlib, or dependency.
+	Origin ModuleOrigin
+	// Manifest alias for dependency imports.
 	DependencyAlias string
 }
 
+// Source unit shared by every compiler phase.
+// Phase outputs live in pipeline artifacts.
 type Module struct {
-	Key         string
-	ImportPath  string
-	FilePath    string
-	IsEntry     bool
-	Origin      ModuleOrigin
-	Dependency  string
-	Content     string
+	// Unique graph identity.
+	Key string
+	// Module path used by imports.
+	ImportPath string
+	// Absolute source path.
+	FilePath string
+	// User-selected entry module.
+	IsEntry bool
+	// Local, stdlib, or dependency.
+	Origin ModuleOrigin
+	// Dependency alias, when any.
+	Dependency string
+	// Loaded source text.
+	Content string
+	// Reserved for incremental builds.
 	ContentHash string
 
+	// Outgoing module graph keys.
 	Dependencies []string
 }
 
+// Shared state for one compilation.
 type CompilerContext struct {
-	Config      Config
+	// Normalized compiler options.
+	Config Config
+	// Shared diagnostic stream.
 	Diagnostics *diagnostics.DiagnosticBag
+	// Predeclared symbols visible before user/prelude code.
 	GlobalScope *table.Scope
 
-	modules      map[string]*Module
-	fileIndex    map[string]string
+	// Module key -> module.
+	modules map[string]*Module
+	// Canonical file path -> module key.
+	fileIndex map[string]string
+	// Module graph edges.
 	dependencies map[string]map[string]struct{}
 
+	// Guards module and dependency indexes.
 	mu sync.RWMutex
 }
 
+// Context constructor for simple root/extension call sites.
 func New(rootDir, extension string, diag *diagnostics.DiagnosticBag) *CompilerContext {
 	cfg := Config{
 		RootDir:   rootDir,
@@ -66,19 +93,31 @@ func New(rootDir, extension string, diag *diagnostics.DiagnosticBag) *CompilerCo
 	return NewWithConfig(cfg, diag)
 }
 
+// Options that affect loading, analysis, lowering, or emission.
 type Config struct {
-	RootDir         string
-	Extension       string
-	StdlibRoot      string
+	// Project/workspace root.
+	RootDir string
+	// Source file extension.
+	Extension string
+	// Standard library root.
+	StdlibRoot string
+	// Manifest alias -> dependency root.
 	DependencyRoots map[string]string
-	TargetOS        string
-	TargetArch      string
-	TargetBackend   string
-	BuildDebug      bool
-	TestMode        bool
-	TestName        string
+	// Target operating system.
+	TargetOS string
+	// Target architecture.
+	TargetArch string
+	// Final backend.
+	TargetBackend string
+	// Emit debug-friendly artifacts.
+	BuildDebug bool
+	// Compile test entry points.
+	TestMode bool
+	// Optional single test name.
+	TestName string
 }
 
+// Normalize options and create shared compiler state.
 func NewWithConfig(cfg Config, diag *diagnostics.DiagnosticBag) *CompilerContext {
 	if diag == nil {
 		diag = diagnostics.NewDiagnosticBag("")
@@ -131,6 +170,7 @@ func NewWithConfig(cfg Config, diag *diagnostics.DiagnosticBag) *CompilerContext
 	}
 }
 
+// Compiler-owned names available before prelude parsing.
 func predeclaredScope() *table.Scope {
 	scope := table.New(nil)
 	declarePredeclaredConst(scope, "true")
@@ -139,6 +179,7 @@ func predeclaredScope() *table.Scope {
 	return scope
 }
 
+// Add one compiler-defined constant to the root scope.
 func declarePredeclaredConst(scope *table.Scope, name string) {
 	if scope == nil || name == "" {
 		return

@@ -6,29 +6,41 @@ import (
 	"compiler/internal/tokens"
 )
 
+// Phase outputs for one module.
 type StageArtifacts struct {
-	Module  *context.Module
-	Tokens  []tokens.Token
-	AST     *ast.Module
-	HasSem  bool
+	// Shared source identity and graph data.
+	Module *context.Module
+	// Lexer output.
+	Tokens []tokens.Token
+	// Parsed syntax tree.
+	AST *ast.Module
+	// Semantic analysis completed.
+	HasSem bool
+	// High-level IR.
 	HIRText string
+	// Mid-level IR.
 	MIRText string
-	LLVMIR  string
+	// LLVM backend IR.
+	LLVMIR string
 }
 
+// Complete output of one pipeline run.
 type Result struct {
 	EntryKey string
 	Stages   map[string]*StageArtifacts
 }
 
+// Ordered phase execution for one compiler context.
 type Pipeline struct {
 	ctx *context.CompilerContext
 }
 
+// Bind a pipeline to shared compiler state.
 func New(ctx *context.CompilerContext) *Pipeline {
 	return &Pipeline{ctx: ctx}
 }
 
+// Run the central lex -> parse -> analyze -> HIR -> MIR -> LLVM flow.
 func (p *Pipeline) Run(entry *context.Module) Result {
 	result := Result{Stages: make(map[string]*StageArtifacts)}
 	if p == nil || p.ctx == nil || entry == nil {

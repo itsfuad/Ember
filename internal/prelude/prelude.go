@@ -8,8 +8,10 @@ import (
 	"compiler/internal/context"
 )
 
+// Auto-loaded Ferret prelude file.
 const GlobalPreludeFile = "global.fer"
 
+// Register global prelude source when it exists.
 func Load(ctx *context.CompilerContext) error {
 	if ctx == nil {
 		return fmt.Errorf("nil compiler context")

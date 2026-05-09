@@ -2,6 +2,7 @@ package context
 
 import "path/filepath"
 
+// Absolute slash-separated path for stable map keys.
 func canonicalPath(path string) string {
 	if path == "" {
 		return ""
@@ -13,6 +14,7 @@ func canonicalPath(path string) string {
 	return filepath.ToSlash(clean)
 }
 
+// Register or replace a module in the shared graph.
 func (ctx *CompilerContext) UpsertModule(module *Module) {
 	if ctx == nil || module == nil || module.Key == "" {
 		return
@@ -26,6 +28,7 @@ func (ctx *CompilerContext) UpsertModule(module *Module) {
 	}
 }
 
+// Lookup by graph identity.
 func (ctx *CompilerContext) ModuleByKey(key string) (*Module, bool) {
 	if ctx == nil || key == "" {
 		return nil, false
@@ -36,6 +39,7 @@ func (ctx *CompilerContext) ModuleByKey(key string) (*Module, bool) {
 	return module, ok
 }
 
+// Lookup by source path.
 func (ctx *CompilerContext) ModuleByFile(filePath string) (*Module, bool) {
 	if ctx == nil || filePath == "" {
 		return nil, false
@@ -50,6 +54,7 @@ func (ctx *CompilerContext) ModuleByFile(filePath string) (*Module, bool) {
 	return module, ok
 }
 
+// Snapshot of known modules.
 func (ctx *CompilerContext) Modules() []*Module {
 	if ctx == nil {
 		return nil
@@ -63,6 +68,7 @@ func (ctx *CompilerContext) Modules() []*Module {
 	return modules
 }
 
+// Record a module dependency edge.
 func (ctx *CompilerContext) AddDependency(fromKey, toKey string) {
 	if ctx == nil || fromKey == "" || toKey == "" {
 		return
@@ -77,6 +83,7 @@ func (ctx *CompilerContext) AddDependency(fromKey, toKey string) {
 	edges[toKey] = struct{}{}
 }
 
+// Outgoing dependency keys for a module.
 func (ctx *CompilerContext) DependenciesOf(moduleKey string) []string {
 	if ctx == nil || moduleKey == "" {
 		return nil
